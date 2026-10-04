@@ -1,4 +1,4 @@
-# Agent Configuration Accessibility
+# Agent Discoverable Config
 
 [한국어](README.md) · [English](README.en.md)
 

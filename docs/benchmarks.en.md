@@ -1,4 +1,4 @@
-# Agent Configuration Accessibility: Validation Report
+# Agent Discoverable Config: Validation Report
 
 [한국어](benchmarks.md) · [English](benchmarks.en.md) · [Design guide](../README.en.md)
 
