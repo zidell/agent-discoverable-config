@@ -292,25 +292,27 @@ How well an OS store protects against other processes in the same account varies
 platform. macOS Keychain shows a confirmation dialog when a process other than the app
 that created the item (such as the `security` command) tries to read the value. Windows
 Credential Manager and an unlocked Linux keyring let any process of the same user read
-it without confirmation. Either way, removing the value from the configuration file
+it without confirmation. Either way, keeping the value out of the configuration file
 prevents accidental exposure.
 
-Leave the reference together with instructions for changing it. An agent should be able
-to guide the user through the correct procedure from this comment alone, without handling
-the key itself.
+Starting with the first generated default file, do not leave an empty slot such as
+`api_key = ""` to paste a value into. Leave the reference together with registration
+instructions instead. An agent should be able to guide the user through the correct
+procedure from this comment alone, without handling the key itself.
 
 ```toml
 # Speech recognition API key. The value is stored in the OS credential store, not here.
 # "keychain": read from the store / "env:NAME": read from an environment variable.
-# To change the key, the user runs `app --set-secret stt_api_key` themselves.
+# To register the key, the user runs `app --set-secret stt_api_key` themselves.
 # Do not write the key value into this file.
 stt_api_key = "keychain"
 ```
 
-### Keep secret entry and checks away from the agent too
+### Keep initial secret registration away from the agent too
 
-Even with secrets out of the file, if the only way to change one is pasting it into the
-configuration file, users end up handing keys to agents in chat. Also provide:
+When a user asks an agent to "install this app and set up the API key," and the only way
+to register the key is pasting it into the configuration file, the user ends up handing
+the key to the agent in chat. Also provide:
 
 - **A secret entry command.** Accept the value through a terminal prompt or GUI input
   field, not a command argument; arguments end up in shell history and process lists.
