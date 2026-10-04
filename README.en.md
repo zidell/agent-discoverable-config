@@ -322,18 +322,6 @@ configuration file, users end up handing keys to agents in chat. Also provide:
 - **Redaction.** Mask secrets in configuration dumps, diagnostics, logs, error messages,
   and crash reports.
 
-### Apps that already store secrets in the configuration file
-
-- On the next launch, move secrets to the OS store and replace the file values with
-  references. Remove a value from the file only after the store write succeeds, so
-  existing users do not lose their keys.
-- Clean up places where old values remain after migration, such as backup files,
-  temporary files used for atomic replacement, and legacy-format files like `config.ini`.
-- If migration is not yet possible, group secrets in a separate section at the end of
-  the file and state in the file header and local instructions: "The `[secrets]` section
-  contains API keys; do not read or print it." Agents are not guaranteed to follow this,
-  so treat it only as a stopgap until migration.
-
 ## From a file edit to an applied change
 
 Document a workflow an agent can follow:
