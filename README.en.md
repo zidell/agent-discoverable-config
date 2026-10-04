@@ -62,6 +62,7 @@ having an instruction file.
 | Invalid values | Identify the field, allowed values, and whether previous values are retained | Silently ignore values or replace them with defaults |
 | Verification | Check the values the app loaded and the resulting behavior | Report success just because text changed in a file |
 | Upgrades | Define precedence and migration between old and new files | Rename files and lose existing user preferences |
+| Secrets | Keep only a storage reference in the config and set values through a dedicated command | Store API keys in plain text alongside general preferences |
 
 Suppose the user asks to turn off the recording start sound. This file does not tell
 an agent whether `sound` controls an effect or system output, or whether `0` means
@@ -117,7 +118,7 @@ Start the instructions with:
 3. The distinction between installed examples/defaults and the active user file.
 4. Editable formats, comment support, and reload/restart steps.
 5. How to create the configuration when it does not exist yet.
-6. Where credentials are stored and how they relate to general preferences.
+6. Where credentials are stored, how they relate to general preferences, and how to set and check them.
 
 The instructions should be complete using only files in the installed app.
 Update them alongside the configuration schema. Check every distribution format;
@@ -266,6 +267,73 @@ Additional capabilities can simplify initial setup and verification:
 For Windows GUI executables, check console output handling as well. Help and paths
 must be available when an agent captures stdout through a pipe or redirects it to a file.
 
+## Keep secrets out of the agent's reading path
+
+When API keys, tokens, or passwords share a file with general preferences, the workflow
+this guide recommends becomes an exposure path. To turn off a recording sound, an agent
+reads the whole configuration file, and what it reads ends up in the conversation
+history, on the model provider's servers, and in tool execution logs. This layout was
+harmless when only the user ever opened the file.
+
+File permissions cannot prevent this. Agents run under the user's account, so they can
+read files protected by `0600` or a user-restricted ACL. An app cannot fully stop a
+same-account process that deliberately searches for secrets. The goal of this section
+is to ensure that **an agent changing a preference does not read a secret by accident**.
+
+### Keep references, not secrets, in the configuration file
+
+| Approach | What stays in the configuration | Notes |
+| --- | --- | --- |
+| OS credential store | A storage marker such as `"keychain"` | macOS Keychain, Windows Credential Manager, Linux Secret Service (libsecret). Reading the whole configuration file reveals no value |
+| Separate credentials file | Nothing, or the file path | Distinguish it by name, such as `credentials.toml`. Agent tools can block reads with a single path rule |
+| Environment variable | The variable name | Suits users who already manage keys through environment variables. The value may still sit in plain text in a shell profile |
+
+How well an OS store protects against other processes in the same account varies by
+platform. macOS Keychain shows a confirmation dialog when a process other than the app
+that created the item (such as the `security` command) tries to read the value. Windows
+Credential Manager and an unlocked Linux keyring let any process of the same user read
+it without confirmation. Either way, removing the value from the configuration file
+prevents accidental exposure.
+
+Leave the reference together with instructions for changing it. An agent should be able
+to guide the user through the correct procedure from this comment alone, without handling
+the key itself.
+
+```toml
+# Speech recognition API key. The value is stored in the OS credential store, not here.
+# "keychain": read from the store / "env:NAME": read from an environment variable.
+# To change the key, the user runs `app --set-secret stt_api_key` themselves.
+# Do not write the key value into this file.
+stt_api_key = "keychain"
+```
+
+### Keep secret entry and checks away from the agent too
+
+Even with secrets out of the file, if the only way to change one is pasting it into the
+configuration file, users end up handing keys to agents in chat. Also provide:
+
+- **A secret entry command.** Accept the value through a terminal prompt or GUI input
+  field, not a command argument; arguments end up in shell history and process lists.
+  Without an interactive terminal, refuse the value and fail with a message telling the
+  user to run the command themselves, so the agent passes that instruction on.
+- **A status command.** Print only whether the secret is set, where it is stored, and
+  whether the last authentication succeeded, never the value or any part of it. Agents
+  can use it to verify that the key works.
+- **Redaction.** Mask secrets in configuration dumps, diagnostics, logs, error messages,
+  and crash reports.
+
+### Apps that already store secrets in the configuration file
+
+- On the next launch, move secrets to the OS store and replace the file values with
+  references. Remove a value from the file only after the store write succeeds, so
+  existing users do not lose their keys.
+- Clean up places where old values remain after migration, such as backup files,
+  temporary files used for atomic replacement, and legacy-format files like `config.ini`.
+- If migration is not yet possible, group secrets in a separate section at the end of
+  the file and state in the file header and local instructions: "The `[secrets]` section
+  contains API keys; do not read or print it." Agents are not guaranteed to follow this,
+  so treat it only as a stopgap until migration.
+
 ## From a file edit to an applied change
 
 Document a workflow an agent can follow:
@@ -281,10 +349,7 @@ If a GUI can overwrite external edits with old in-memory values, explicitly inst
 users to close the app before editing and restart afterward. Opening Settings should
 not be assumed to reload the file.
 
-Prefer separating credentials from general preferences. If they share a file, say so
-in the header and local instructions, and advise against logging the entire contents.
-Protect credential files and backups using platform-appropriate access controls,
-such as `0600` on macOS/Linux or a user-restricted ACL on Windows.
+Handle credentials as described in [Keep secrets out of the agent's reading path](#keep-secrets-out-of-the-agents-reading-path).
 Editing a configuration file does not grant OS microphone, accessibility, or global
 shortcut permissions.
 
