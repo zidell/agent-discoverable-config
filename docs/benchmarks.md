@@ -1,4 +1,4 @@
-# 에이전트 환경설정 접근성 검증 기록
+# Agent Discoverable Config 검증 기록
 
 [한국어](benchmarks.md) · [English](benchmarks.en.md) · [설계 지침](../README.md)
 
